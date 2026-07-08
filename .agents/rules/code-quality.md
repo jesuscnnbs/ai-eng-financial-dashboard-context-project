@@ -11,19 +11,20 @@ All interactive or information-bearing elements SHOULD use semantic HTML and ARI
 ### Tailwind CSS via `cn()` utility
 All classname composition MUST use the `cn()` helper from `@/lib/utils` (clsx + tailwind-merge). Manual classname concatenation is NOT allowed.
 
+### No unused imports
+All TypeScript/JavaScript files MUST have clean imports. The `noUnusedLocals` option in TSConfig enforces this at build time — ensure it stays enabled.
+
 ## Mitigate
 
-### Theme system
+### Theme system via CSS variables
 The `.dark` class MUST NOT be hardcoded in JSX. Instead:
-- Respect `prefers-color-scheme` media query as default
-- Optionally provide a toggle mechanism
-- Keep CSS variable definitions in `index.css` as the single source of truth
+- Use a `<script>` in `index.html` or a React effect to toggle `.dark` based on `prefers-color-scheme` or user preference
+- All theme colors are defined as CSS variables in `frontend/src/index.css` using Oklch — this is the single source of truth
+- Never hardcode color values in component files; always reference `var(--<variable>)`
+- Currently `.dark` is hardcoded on `<main>` in `App.tsx` — this MUST be extracted
 
 ### HTML metadata
-The `<title>` in `index.html` MUST be descriptive of the application. Currently it reads `"frontend"` — it MUST be changed to reflect the project name (e.g., "Financial Metrics Dashboard").
+The `<title>` in `index.html` MUST be descriptive. Currently reads `"frontend"` — MUST be changed to `"Financial Metrics Dashboard"`.
 
-### No unused imports
-All TypeScript/JavaScript files MUST have clean imports. Unused imports MUST be removed. The `noUnusedLocals` TSConfig option enforces this at build time — ensure it is always enabled.
-
-### Console and debug logs
-No `console.log`, `console.debug`, or `debugger` statements MUST be committed. Use a proper logging approach if needed (structured logging in backend, console.warn/error for user-facing issues in frontend).
+### Clean console
+No `console.log` or `console.debug` statements MUST be committed. The backend uses debugpy for debugging; the frontend may use `console.warn` or `console.error` for user-facing issues only.
