@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type MetricsAlert } from '@/lib/financial-types'
@@ -22,6 +23,16 @@ function formatIncreaseRatio(value: number): string {
 }
 
 export function AnomaliesTable({ data, loading, threshold, onThresholdChange }: AnomaliesTableProps) {
+  const [localThreshold, setLocalThreshold] = useState(threshold)
+
+  useEffect(() => {
+    setLocalThreshold(threshold)
+  }, [threshold])
+
+  function commitThreshold() {
+    onThresholdChange(localThreshold)
+  }
+
   if (loading) {
     return (
       <Card className="border-border/60">
@@ -61,12 +72,15 @@ export function AnomaliesTable({ data, loading, threshold, onThresholdChange }: 
             min={0.01}
             max={1.0}
             step={0.01}
-            value={threshold}
-            onChange={(e) => onThresholdChange(Number(e.target.value))}
+            value={localThreshold}
+            onChange={(e) => setLocalThreshold(Number(e.target.value))}
+            onMouseUp={commitThreshold}
+            onTouchEnd={commitThreshold}
+            onKeyUp={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') commitThreshold() }}
             className="w-full max-w-48 accent-[var(--chart-outcome)]"
           />
           <span className="text-sm font-semibold text-foreground tabular-nums w-10 text-right">
-            {threshold.toFixed(2)}
+            {localThreshold.toFixed(2)}
           </span>
         </div>
 
