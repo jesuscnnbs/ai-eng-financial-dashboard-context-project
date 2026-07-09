@@ -24,6 +24,13 @@ export interface MonthlyDataPoint {
   profitPercent: number
 }
 
+export interface MetricsAlert {
+  period: string
+  outcome_total: number
+  baseline_average: number
+  increase_ratio: number
+}
+
 export interface MetricsFacets {
   operation_types: OperationType[]
   business_types: BusinessType[]

@@ -4,11 +4,13 @@ import { DateFilter } from "@/components/dashboard/date-filter";
 import { KPIRow } from "@/components/dashboard/kpi-row";
 import { IncomeOutcomeChart } from "@/components/dashboard/income-outcome-chart";
 import { ProfitPercentChart } from "@/components/dashboard/profit-percent-chart";
+import { AnomaliesTable } from "@/components/dashboard/anomalies-table";
 import {
   type FinancialMovement,
   type KPIMetrics,
   type MonthlyDataPoint,
   type MetricsFacets,
+  type MetricsAlert,
 } from "@/lib/financial-types";
 import { computeKPIs, computeMonthlyData } from "@/lib/financial-utils";
 
@@ -31,6 +33,25 @@ async function fetchFinancialData(
   return response.json();
 }
 
+async function fetchAlerts(
+  threshold: number,
+  startDate?: string,
+  endDate?: string,
+): Promise<MetricsAlert[]> {
+  const params = new URLSearchParams();
+  params.set("threshold", String(threshold));
+  params.set("group_by", "month");
+  if (startDate) params.set("start_date", startDate);
+  if (endDate) params.set("end_date", endDate);
+  const response = await fetch(
+    `${API_BASE_URL}/api/metrics/alerts?${params.toString()}`,
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to fetch alerts: ${response.status}`);
+  }
+  return response.json();
+}
+
 function App() {
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyDataPoint[]>([]);
@@ -38,19 +59,39 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [minDate, setMinDate] = useState("");
   const [maxDate, setMaxDate] = useState("");
+  const [alerts, setAlerts] = useState<MetricsAlert[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [threshold, setThreshold] = useState(0.3);
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+
+  function loadAlerts(
+    thr: number,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    setAlertsLoading(true);
+    fetchAlerts(thr, startDate, endDate)
+      .then(setAlerts)
+      .catch(() => setAlerts([]))
+      .finally(() => setAlertsLoading(false));
+  }
 
   useEffect(() => {
+    setAlertsLoading(true);
     Promise.all([
       fetchFinancialData(),
       fetch(`${API_BASE_URL}/api/metrics/facets`).then<MetricsFacets>((r) =>
         r.json(),
       ),
+      fetchAlerts(threshold),
     ])
-      .then(([movements, facets]) => {
+      .then(([movements, facets, alertData]) => {
         setMetrics(computeKPIs(movements));
         setMonthlyData(computeMonthlyData(movements));
         setMinDate(facets.min_date);
         setMaxDate(facets.max_date);
+        setAlerts(alertData);
       })
       .catch(() => {
         setError(
@@ -59,10 +100,13 @@ function App() {
       })
       .finally(() => {
         setLoading(false);
+        setAlertsLoading(false);
       });
   }, []);
 
   function handleDateFilter(startDate: string, endDate: string) {
+    setFilterStartDate(startDate);
+    setFilterEndDate(endDate);
     setLoading(true);
     setError(null);
     fetchFinancialData(startDate, endDate)
@@ -78,6 +122,16 @@ function App() {
       .finally(() => {
         setLoading(false);
       });
+    loadAlerts(threshold, startDate, endDate);
+  }
+
+  function handleThresholdChange(newThreshold: number) {
+    setThreshold(newThreshold);
+    loadAlerts(
+      newThreshold,
+      filterStartDate || undefined,
+      filterEndDate || undefined,
+    );
   }
 
   return (
@@ -111,6 +165,15 @@ function App() {
           >
             <IncomeOutcomeChart data={monthlyData} loading={loading} />
             <ProfitPercentChart data={monthlyData} loading={loading} />
+          </section>
+
+          <section aria-label="Anomaly detection alerts">
+            <AnomaliesTable
+              data={alerts}
+              loading={alertsLoading}
+              threshold={threshold}
+              onThresholdChange={handleThresholdChange}
+            />
           </section>
         </div>
       </div>
